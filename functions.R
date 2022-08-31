@@ -23,6 +23,34 @@ colMin <- function(data) {
 }
 
 
+# Residual variance for GNAR models ---------------------------------------
+# compute average variance of residuals (for white noise error term)
+compute_variance <- function(GNARmodel) {
+  res <- GNARmodel %>% 
+    residuals() %>% 
+    apply(MARGIN = 2, FUN = function(i) var(i)) %>% 
+    mean()
+  
+  return(res)
+}
+
+# compute average variance of residuals for each data subset (for white noise error term)
+compute_variance_subsets <- function(GNARmodel_list) {
+  
+  res_vector <- c()
+  
+  for (i in seq(1, 5)) {
+    res <- GNARmodel_list[[i]] %>% 
+      residuals() %>% 
+      apply(MARGIN = 2, FUN = function(i) var(i)) %>% 
+      mean()
+    
+    res_vector <- c(res_vector, res)
+  }
+  return(res_vector)
+}
+
+
 # Maps COVID --------------------------------------------------------------
 # plot county map of Ireland, coloured indicating the COVID-19 incidence
 map_covid <- function(desired_date # form "2020-03-01", has to be Monday
@@ -1654,8 +1682,8 @@ compare_MASE <- function(mase_old,
                          old_model, 
                          new_model
 ) {
-  mase_old$model_version <- "old"
-  mase_new$model_version <- "new"
+  mase_old$model_version <- "initial"
+  mase_new$model_version <- "optimised"
   
   mase_comparison <- rbind(mase_old, 
                            mase_new)
@@ -1674,10 +1702,10 @@ compare_MASE <- function(mase_old,
           axis.text.x = element_text(angle = 90, 
                                      vjust = 0.5, 
                                      hjust=1)) +
-    scale_color_manual(values = c("old" = "#F8766D", 
-                                  "new" = "#A3A500"), 
-                       labels = c("old" = paste0("old: ", old_model), 
-                                  "new" = paste0("new: ", new_model)), 
+    scale_color_manual(values = c("initial" = "#F8766D", 
+                                  "optimised" = "#A3A500"), 
+                       labels = c("initial" = paste0("old: ", old_model), 
+                                  "optimised" = paste0("new: ", new_model)), 
                        name = "Model version")
   
   ggsave(paste0("plots/Prediction/Comparison/old_vs_new_", network_name, ".pdf"), 
@@ -1686,35 +1714,9 @@ compare_MASE <- function(mase_old,
 }
 
 
+
+
 # Simulation data  --------------------------------------------------------
-# compute average variance of residuals (for white noise error term)
-compute_variance <- function(GNARmodel) {
-  res <- GNARmodel %>% 
-    residuals() %>% 
-    apply(MARGIN = 2, FUN = function(i) var(i)) %>% 
-    mean()
-  
-  return(res)
-}
-
-# compute average variance of residuals for each data subset (for white noise error term)
-compute_variance_subsets <- function(GNARmodel_list) {
-  
-  res_vector <- c()
-  
-  for (i in seq(1, 5)) {
-    res <- GNARmodel_list[[i]] %>% 
-      residuals() %>% 
-      apply(MARGIN = 2, FUN = function(i) var(i)) %>% 
-      mean()
-    
-    res_vector <- c(res_vector, res)
-  }
-  return(res_vector)
-}
-
-
-
 # generate simulated data
 simulate_time_series <- function(gnar_object, 
                                  GNARmodel, # GNARfit model
@@ -1752,7 +1754,7 @@ simulate_time_series <- function(gnar_object,
     
     for (county in counties) {
       
-      # create data frame with only relevant county as column
+      # create data frame consisting of the relevant county as column
       initial_df_county <- simulated_df %>% dplyr::select(all_of(county))
       
       # numeric index for vertex according to county index
@@ -1801,39 +1803,52 @@ simulate_time_series <- function(gnar_object,
         # for every stage, identify neighbors and compute term based on beta coefficients and lagged values 
         if (beta_order_component != 0) {
           for (stage in seq(1, beta_order_component)) {
-            stage_neighborhood <- spl_county_names %>% 
+            # identify vertices in certain neighbourhood stage 
+            stage_neighbourhood <- spl_county_names %>% 
               filter(spl == stage) %>% 
               pull(CountyName)
             
-            initial_df_neighbors <- simulated_df %>% dplyr::select(all_of(stage_neighborhood))
+            # compute SPL weights as the inverse of numbers of vertices
+            # in neighbourhood
+            neighbour_weight <- 1 / (stage_neighbourhood %>% length())
             
-            beta_part <- sum(beta_coef_lagged$param[stage] * (1 / stage) * initial_df_neighbors[current_end + 1 - lagged, ])
+            # filter data for neigbours 
+            initial_df_neighbours <- simulated_df %>% dplyr::select(all_of(stage_neighbourhood))
             
+            # compute beta term for certain time lag 
+            beta_part <- sum(beta_coef_lagged$param[stage] * neighbour_weight * initial_df_neighbours[current_end + 1 - lagged, ])
+            
+            # store beta term
             beta_part_v <- c(beta_part_v, beta_part)
           }
         }
         if (beta_order_component == 0) {
+          # if no neighbours included, set beta term to zero 
           beta_part_v <- c(beta_part_v, 0)
         }
         
       }
       
-      # compute alpha term 
-      alpha_term <- (alpha_coef$param * initial_df_county[(current_end - n_alpha) : (current_end), 1]) %>% 
+      # compute alpha term as sum of all time lags 
+      alpha_term <- (alpha_coef$param * initial_df_county[(current_end - n_alpha) : current_end, 1]) %>% 
         sum()
       
-      # compute beta term 
+      # compute over beta term as sum of all time lags 
       beta_term <- beta_part_v %>% sum()
       
       # compute simulated value plus random error
-      simulated_value <- alpha_term + beta_term + rnorm(n = 1, mean = 1, sd = sqrt(av_var))
+      simulated_value <- alpha_term + beta_term + rnorm(n = 1, 
+                                                        mean = 1, 
+                                                        sd = sqrt(av_var))
       
       # add simulated data point to existing vector of simulated data points  
-      simulated_values <- c(simulated_values, simulated_value)
+      simulated_values <- c(simulated_values, 
+                            simulated_value)
       
     }
-    # add new row with simulated data points 
-    simulated_df <- rbind(simulated_df, simulated_values)
+    # add new row with simulated data points for each county  
+    simulated_df <- rbind(simulated_df, 
+                          simulated_values)
     
     # compute current time end point 
     current_end <- simulated_df %>% nrow()
@@ -1854,12 +1869,12 @@ simulate_time_series <- function(gnar_object,
 
 # generate simulated data with data subset specific variance 
 simulate_time_series_subsets <- function(gnar_object, 
-                                 GNARmodel_list, # GNARfit model list for each subset
-                                 beta_list, # best performing beta order for each subset
-                                 var_vector, # variance vector for subsets
-                                 county_index, 
-                                 counties = counties_v, 
-                                 data_list = datasets_list) {
+                                         GNARmodel_list, # GNARfit model list for each subset
+                                         beta_list, # best performing beta order for each subset
+                                         var_vector, # variance vector for subsets
+                                         county_index, 
+                                         counties = counties_v, 
+                                         data_list = datasets_list) {
   
   n_beginning <- beta_list[[1]] %>% length()
   
@@ -1876,7 +1891,7 @@ simulate_time_series_subsets <- function(gnar_object,
   
   # initialize data frame to store simulated data
   simulated_df <- initial_df
-  simulated_df$subset <- NA
+  simulated_df$subset <- "beginning"
   
   # current time 
   current_end <- initial_df %>% nrow()
@@ -1889,20 +1904,20 @@ simulate_time_series_subsets <- function(gnar_object,
     # number of lags 
     n_alpha <- beta_list[[i]] %>% length()
     
-    # set prediction time 
+    # set prediction time according to the size of the subset 
     timeframe <- datasets_list[[i]] %>% nrow()
     
-    # index to control number of time steps to simulate 
+    # variable to control number of time steps to simulate 
     simulated_time_steps <- 1
     
     # predict for weeks according to time frame
     while (simulated_time_steps < timeframe) {
+      # increase control variable 
       simulated_time_steps <- simulated_time_steps + 1
       
       simulated_values <- c()
       
       for (county in counties) {
-        
         # create data frame with only relevant county as column
         initial_df_county <- simulated_df %>% dplyr::select(all_of(county))
         
@@ -1952,18 +1967,28 @@ simulate_time_series_subsets <- function(gnar_object,
           # for every stage, identify neighbors and compute term based on beta coefficients and lagged values 
           if (beta_order_component != 0) {
             for (stage in seq(1, beta_order_component)) {
-              stage_neighborhood <- spl_county_names %>% 
+              # identify vertices in neighbourhood of certain stage 
+              stage_neighbourhood <- spl_county_names %>% 
                 filter(spl == stage) %>% 
                 pull(CountyName)
               
-              initial_df_neighbors <- simulated_df %>% dplyr::select(all_of(stage_neighborhood))
+              # compute SPL weights as the inverse of numbers of vertices
+              # in neighbourhood
+              neighbour_weight <- 1 / (stage_neighbourhood %>% length())
               
-              beta_part <- sum(beta_coef_lagged$param[stage] * (1 / stage) * initial_df_neighbors[current_end + 1 - lagged, ])
+              # filter data for neighbours 
+              initial_df_neighbours <- simulated_df %>% 
+                dplyr::select(all_of(stage_neighbourhood))
               
+              # compute beta term for certain time lag 
+              beta_part <- sum(beta_coef_lagged$param[stage] * neighbour_weight * initial_df_neighbours[current_end + 1 - lagged, ])
+              
+              # save beta term 
               beta_part_v <- c(beta_part_v, beta_part)
             }
           }
           if (beta_order_component == 0) {
+            # if no neighbours included, set beta term to zero
             beta_part_v <- c(beta_part_v, 0)
           }
           
@@ -2004,5 +2029,102 @@ simulate_time_series_subsets <- function(gnar_object,
            -c("time", "subset"))
   return(simulated_df_long)
 }
+
+# extract GNAR model coefficients from model list
+extract_coef <- function(models_list) {
+  
+  coef_list <- list()
+  for (i in seq(1, 5)) {
+    coef_vector <- models_list[[i]] %>% coef()
+    
+    coef_list[[i]] <- data.frame("subset" = rep(i,
+                                                coef_vector %>% length()),
+                                 "real_coef" = coef_vector %>% round(2),
+                                 "type" = names(coef_vector))
+    
+  }
+  coef_df <- do.call(rbind, coef_list)
+  
+  return(coef_df)
+}
+
+# Compare coefficients for simulation -------------------------------------
+# re-compute GNAR model coefficients for simulated data 
+reconstruct_coefficients <- function(GNAR_model,
+                                     simulation_df, 
+                                     alphaOrder, 
+                                     betaOrder, 
+                                     net) {
+  coef_df <- GNAR_model %>% 
+    coef() %>% 
+    round(2) %>% 
+    as.data.frame()
+  colnames(coef_df) <- "real_param"
+  
+  simulation_short <- simulation_df %>% 
+    spread(CountyName, ID) %>% 
+    dplyr::select(-time) %>% 
+    as.matrix()
+  
+  gnar_model <- GNARfit(vts = simulation_short, 
+                        net = net, 
+                        alphaOrder = alphaOrder, 
+                        betaOrder = betaOrder, 
+                        globalalpha = TRUE)
+  
+  coef_df$recomp_param <- gnar_model %>% 
+    coef()
+  coef_df$type <- rownames(coef_df)
+  
+  # compute 95% confidence interval 
+  ci_coef <- gnar_model$mod %>% confint() 
+  
+  # add confidence interval to coefficient estimate 
+  coef_df$recomp_param_ci <- paste0(coef_df$recomp_param %>% round(2), 
+                                    " [", 
+                                    ci_coef[, 1] %>% round(2),
+                                    ", ",
+                                    ci_coef[, 2] %>% round(2),
+                                    "]")
+  return(coef_df[, c(3, 1, 4)])
+}
+
+# re-compute GNAR model coefficients for data subsets 
+reconstruct_coefficients_subsets <- function(GNAR_model_list,
+                                             simulation_subsets_df, 
+                                             alphaOrder_vector, 
+                                             betaOrder_vector, 
+                                             net) {
+  comparison_list <- list()
+  
+  # circle through all five data subsets and recompute the GNAR coefficients 
+  for (i in seq(1, 5)) {
+    
+    GNAR_model <- GNAR_model_list[[i]]
+    
+    alphaOrder <- alphaOrder_vector[i]
+    betaOrder <- betaOrder_vector[[i]]
+    
+    simulation_df <- simulation_subsets_df %>% 
+      filter(subset == i) %>% 
+      dplyr::select(-subset)
+    
+    coef_res <- reconstruct_coefficients(GNAR_model = GNAR_model, 
+                                         simulation_df = simulation_df, 
+                                         alphaOrder = alphaOrder, 
+                                         betaOrder = betaOrder, 
+                                         net = net)
+    
+    coef_res$subset <- c(i, rep("", nrow(coef_res) - 1))
+    
+    comparison_list[[i]] <- coef_res
+  }
+  
+  comparison_df <- do.call(rbind, comparison_list)
+  
+  return(comparison_df[, c(4, 1, 2, 3)])
+}
+
+
 
 

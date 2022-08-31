@@ -105,6 +105,14 @@ hubs <- c("Dublin",
           "Galway", 
           "Waterford")
 
+# create vector after which tables for latex output are ordered 
+network_ordering <- c("delaunay", 
+                      "Gabriel",
+                      "SOI", 
+                      "Relative", 
+                      "Queen", 
+                      "Eco. hub", 
+                      "")
 
 # Load maps data ----------------------------------------------------------
 # download Ireland data level 1 from GADM database
@@ -980,19 +988,21 @@ print(xtable(graph_soi,
 )
 
 
-# compare all networks (but KNN, DNN)
-graph_overview <- cbind(graph_queen, 
-                        graph_eco_hub$eco_hub, 
-                        graph_train$train, 
-                        graph_delaunay$delaunay, 
-                        graph_gabriel$gabriel, 
-                        graph_relative$relative, 
-                        graph_soi$soi, 
-                        graph_complete$complete
+# compare all networks (but KNN, DNN and Complete)
+graph_overview <- cbind("metric" = graph_queen$metric,
+                        "delauany" = graph_delaunay$delaunay %>% round(2), 
+                        "gabriel" = graph_gabriel$gabriel %>% round(2), 
+                        "soi" = graph_soi$soi %>% round(2),                         
+                        "relative" = graph_relative$relative %>% round(2), 
+                        "queen" = graph_queen$queen %>% round(2), 
+                        "eco_hub"= graph_eco_hub$eco_hub %>% round(2), 
+                        "train" = graph_train$train %>% round(2)
                         )
 
 # for latex 
-strCaption <- "Overview of network characteristics for COVID-19 networks, 
+strCaption <- "Overview of network characteristics for \\textbf{Delaunay triangulation}, 
+\\textbf{Gabriel}, \\textbf{SOI}, \\textbf{Relative neighbourhood (Rel. neigh.)}, 
+\\textbf{Queen's contiguity}, \\textbf{Economic (Eco.) hub}, \\textbf{Railway-based} network,  
 including average (av.) degree, density, average (av.) shortest path length (SPL), 
 global and average (av.) local clustering (clust.) as well as average (av.) 
 betweenness (betw.) and its standard deviation (s.d.)"
@@ -1000,7 +1010,7 @@ print(xtable(graph_overview,
              digits=2,
              caption=strCaption,
              label="tab:network_char", 
-             align = c("", "l", "|", "r", "r", "r", "r", "r", "r", "r", "r")),
+             align = c("", "l", "|", "r", "r", "r", "r", "r", "r", "r")),
       include.rownames=FALSE, 
       include.colnames=FALSE, 
       caption.placement="bottom",
@@ -1008,9 +1018,9 @@ print(xtable(graph_overview,
       add.to.row = list(pos = list(-1,
                                    nrow(graph_soi)),
                         command = c(paste("\\toprule \n",
-                                          " Metric & Queen & Eco hubs & 
-                                          Railway & Delaunay & Gabriel & 
-                                          Rel. neigh. & SOI & Complete \\\\\n",
+                                          " Metric & Delaunay & Gabriel & 
+                                           SOI & Rel. neigh. & Complete & Queen & 
+                                           Eco. hub & Railway \\\\\n",
                                           "\\midrule \n"),
                                     "\\bottomrule \n")
       )
@@ -1208,6 +1218,514 @@ ggplot(moran_soi,
   theme(legend.position = "None")
 ggsave("plots/spatialCor/covid_moran_soi.pdf", 
        width = 27, height = 14, unit = "cm")
+
+# Scale-free --------------------------------------------------------------
+# analyse log-log behaviour and regression R squared
+queen_scale_free <- is_scale_free(covid_net_queen_igraph, 
+                                  network_name = "queen")
+queen_scale_free$graph
+queen_scale_free$R_squared
+
+eco_hub_scale_free <- is_scale_free(covid_net_eco_hubs_igraph, 
+                                    network_name = "eco_hubs")
+eco_hub_scale_free$graph
+eco_hub_scale_free$R_squared
+
+train_scale_free <- is_scale_free(covid_net_train_igraph, 
+                                  network_name = "train")
+train_scale_free$graph
+train_scale_free$R_squared
+
+knn_scale_free <- is_scale_free(opt_knn_net_igraph,
+                                network_name = "knn")
+knn_scale_free$graph
+knn_scale_free$R_squared
+
+dnn_scale_free <- is_scale_free(opt_dnn_net_igraph, 
+                                network_name = "dnn")
+dnn_scale_free$graph
+dnn_scale_free$R_squared
+
+delaunay_scale_free <- is_scale_free(covid_net_delaunay_igraph, 
+                                     network_name = "delaunay")
+delaunay_scale_free$graph
+delaunay_scale_free$R_squared
+
+gabriel_scale_free <- is_scale_free(covid_net_gabriel_igraph, 
+                                    network_name = "gabriel")
+gabriel_scale_free$graph
+gabriel_scale_free$R_squared
+
+relative_scale_free <- is_scale_free(covid_net_relative_igraph, 
+                                     network_name = "relative")
+relative_scale_free$graph
+relative_scale_free$R_squared
+
+soi_scale_free <- is_scale_free(igraph_net = covid_net_soi_igraph, 
+                                network_name = "soi")
+soi_scale_free$graph
+soi_scale_free$R_squared
+
+# for latex
+scale_free_overview <- data.frame("name" = c("Delaunay triangulation", 
+                                             "Gabriel", 
+                                             "SOI",                                           
+                                             "Relative neighbourhood", 
+                                             "KNN", 
+                                             "DNN",
+                                             "Queen's", 
+                                             "Economic hub", 
+                                             "Railway-based"), 
+                                  "R_squared" = c(delaunay_scale_free$R_squared, 
+                                                  gabriel_scale_free$R_squared,
+                                                  soi_scale_free$R_squared, 
+                                                  relative_scale_free$R_squared,
+                                                  knn_scale_free$R_squared,
+                                                  dnn_scale_free$R_squared, 
+                                                  queen_scale_free$R_squared, 
+                                                  eco_hub_scale_free$R_squared, 
+                                                  train_scale_free$R_squared))
+
+strCaption <- "Test for scale-free property for each constructed network, 
+$R^2$ for regression of log empirical cumulative distribution on log transformed 
+degree"
+print(xtable(scale_free_overview,
+             digits=2,
+             caption=strCaption,
+             label="tab:scale_free", 
+             align = c("", "l", "|", "c")),
+      include.rownames=FALSE, 
+      include.colnames=FALSE, 
+      caption.placement="bottom",
+      hline.after=NULL,
+      add.to.row = list(pos = list(-1,
+                                   nrow(scale_free_overview)),
+                        command = c(paste("\\toprule \n",
+                                          "Network & $R^2$ \\\\\n",
+                                          "\\midrule \n"),
+                                    "\\bottomrule \n")
+      )
+)
+
+# Reproduction rate -------------------------------------------------------
+
+# compute reproduction number according to Pastor-Satorras and Vespignani 2002 
+R_queen_psv <- reproduction_rate_psv(covid_net_queen_igraph)
+R_economic_hub_psv <- reproduction_rate_psv(covid_net_eco_hubs_igraph)
+R_train_psv <- reproduction_rate_psv(covid_net_train_igraph)
+R_knn_psv <- reproduction_rate_psv(opt_knn_net_igraph)
+R_dnn_psv <- reproduction_rate_psv(opt_dnn_net_igraph)
+R_delaunay_psv <- reproduction_rate_psv(covid_net_delaunay_igraph)
+R_gabriel_psv <- reproduction_rate_psv(covid_net_gabriel_igraph)
+R_relative_psv <- reproduction_rate_psv(covid_net_relative_igraph)
+R_soi_psv <- reproduction_rate_psv(covid_net_soi_igraph)
+
+# create overview data frame 
+R_comparison_psv <- data.frame("name" = c("Delaunay triangulation", 
+                                          "Gabriel",
+                                          "SOI", 
+                                          "Relative neighbourhood", 
+                                          "KNN", 
+                                          "DNN",
+                                          "Queen", 
+                                          "Economic hub",
+                                          "Railway-based"), 
+                               "r_value" = c(R_delaunay_psv, 
+                                             R_gabriel_psv, 
+                                             R_soi_psv, 
+                                             R_relative_psv,
+                                             R_knn_psv, 
+                                             R_dnn_psv,
+                                             R_queen_psv,
+                                             R_economic_hub_psv, 
+                                             R_train_psv))
+
+# compute reproduction number according to Lloyd and Valeika 2007 
+R_queen_lv <- reproduction_rate_lv(covid_net_queen_igraph)
+R_eco_hubs_lv <- reproduction_rate_lv(igraph_object = covid_net_eco_hubs_igraph, 
+                                      numeric_vertices = TRUE, 
+                                      county_index = county_index_eco_hubs)
+R_train_lv <- reproduction_rate_lv(igraph_object = covid_net_train_igraph, 
+                                   numeric_vertices = TRUE,
+                                   county_index = county_index_train)
+R_knn_lv <- reproduction_rate_lv(opt_knn_net_igraph)
+R_dnn_lv <- reproduction_rate_lv(opt_dnn_net_igraph)
+R_delaunay_lv <- reproduction_rate_lv(covid_net_delaunay_igraph)
+R_gabriel_lv <- reproduction_rate_lv(covid_net_gabriel_igraph)
+R_relative_lv <- reproduction_rate_lv(covid_net_relative_igraph)
+R_soi_lv <- reproduction_rate_lv(covid_net_soi_igraph)
+
+# create overview data frame 
+R_comparison_lv <- data.frame("name" = c("Delaunay triangulation", 
+                                         "Gabriel",
+                                         "SOI", 
+                                         "Relative neighbourhood", 
+                                         "Complete",
+                                         "KNN", 
+                                         "DNN",
+                                         "Queen", 
+                                         "Economic hub", 
+                                         "Railway-based"), 
+                              "r_value" = c(R_delaunay_lv, 
+                                            R_gabriel_lv, 
+                                            R_soi_lv, 
+                                            R_relative_lv,
+                                            R_complete_lv, 
+                                            R_knn_lv, 
+                                            R_dnn_lv,
+                                            R_queen_lv,
+                                            R_eco_hubs_lv, 
+                                            R_train_lv
+                                            ))
+
+# for latex
+strCaption <- "Computation of basic reproduction number according to
+\\cite{lloyd2007network} for all COVID-19 networks"
+print(xtable(R_comparison_lv,
+             digits=2,
+             caption=strCaption,
+             label="tab:rep_number_adapted", 
+             align = c("", "l", "|", "c")),
+      include.rownames=FALSE, 
+      include.colnames=FALSE, 
+      caption.placement="bottom",
+      hline.after=NULL,
+      add.to.row = list(pos = list(-1,
+                                   nrow(R_comparison_lv)),
+                        command = c(paste("\\toprule \n",
+                                          "Network & $R_0$ \\\\\n",
+                                          "\\midrule \n"),
+                                    "\\bottomrule \n")
+      )
+)
+
+
+# compute reproduction number according to Pastor-Satorras and Vespignani 2002 
+R_queen_t <- reproduction_rate_t(covid_net_queen_igraph)
+R_economic_hub_t <- reproduction_rate_t(igraph_object = covid_net_eco_hubs_igraph)
+R_train_t <- reproduction_rate_t(covid_net_train_igraph)
+R_knn_t <- reproduction_rate_t(opt_knn_net_igraph)
+R_dnn_t <- reproduction_rate_t(opt_dnn_net_igraph)
+R_delaunay_t <- reproduction_rate_t(covid_net_delaunay_igraph)
+R_gabriel_t <- reproduction_rate_t(covid_net_gabriel_igraph)
+R_relative_t <- reproduction_rate_t(covid_net_relative_igraph)
+R_soi_t <- reproduction_rate_t(covid_net_soi_igraph)
+
+# create overview data frame 
+R_comparison_t <- data.frame("name" = c("Queen", 
+                                        "Economic hub", 
+                                        "Railway-based", 
+                                        "KNN", 
+                                        "DNN", 
+                                        "Delaunay triangulation", 
+                                        "Gabriel",
+                                        "Relative neighbourhood", 
+                                        "SOI"), 
+                             "r_value" = c(R_queen_t,
+                                           R_economic_hub_t, 
+                                           R_train_t, 
+                                           R_knn_t, 
+                                           R_dnn_t, 
+                                           R_delaunay_t, 
+                                           R_gabriel_t, 
+                                           R_relative_t,
+                                           R_soi_t))
+
+
+
+
+# Sensitivity of reproduction number --------------------------------------
+# randomly delete 1-5 edges and observe how the reproduction number changes 
+# repetition for 100 times 
+
+# Queen 
+sens_queen <- reproduction_sensitivity(covid_net_queen_igraph)
+# compute average difference and standard deviation
+queen_overview <- sens_queen %>% 
+  group_by(deletions) %>% 
+  summarise(mean = mean(reproduction_rate) - R_queen_lv, 
+            sd = sd(reproduction_rate))
+
+# Eco hubs 
+sens_eco_hubs <- reproduction_sensitivity(covid_net_eco_hubs_igraph, 
+                                          numeric_vertices = TRUE, 
+                                          county_index = county_index_eco_hubs)
+# compute average difference and standard deviation
+eco_hubs_overview <- sens_eco_hubs %>% 
+  group_by(deletions) %>% 
+  summarise(mean = mean(reproduction_rate) - R_eco_hubs_lv, 
+            sd = sd(reproduction_rate))
+
+
+# Train
+sens_train <- reproduction_sensitivity(covid_net_train_igraph, 
+                                       numeric_vertices = TRUE, 
+                                       county_index = county_index_train)
+# compute average difference and standard deviation
+train_overview <- sens_train %>% 
+  group_by(deletions) %>% 
+  summarise(mean = mean(reproduction_rate) - R_train_lv, 
+            sd = sd(reproduction_rate))
+
+# Delaunay
+sens_delaunay <- reproduction_sensitivity(covid_net_delaunay_igraph)
+# compute average difference and standard deviation
+delaunay_overview <- sens_delaunay %>% 
+  group_by(deletions) %>% 
+  summarise(mean = mean(reproduction_rate) - R_delaunay_lv, 
+            sd = sd(reproduction_rate))
+
+# Gabriel 
+sens_gabriel <- reproduction_sensitivity(covid_net_gabriel_igraph)
+# compute average difference and standard deviation
+gabriel_overview <- sens_gabriel %>% 
+  group_by(deletions) %>% 
+  summarise(mean = mean(reproduction_rate) - R_gabriel_lv, 
+            sd = sd(reproduction_rate))
+
+# Relative
+sens_relative <- reproduction_sensitivity(covid_net_relative_igraph)
+# compute average difference and standard deviation
+relative_overview <- sens_relative %>% 
+  group_by(deletions) %>% 
+  summarise(mean = mean(reproduction_rate) - R_relative_lv, 
+            sd = sd(reproduction_rate))
+
+# SOI
+sens_soi <- reproduction_sensitivity(covid_net_soi_igraph)
+# compute average difference and standard deviation
+soi_overview <- sens_soi %>% 
+  group_by(deletions) %>% 
+  summarise(mean = mean(reproduction_rate) - R_soi_lv, 
+            sd = sd(reproduction_rate))
+
+
+# KNN
+sens_knn <- reproduction_sensitivity(opt_knn_net_igraph)
+# compute average difference and standard deviation
+knn_overview <- sens_knn %>% 
+  group_by(deletions) %>% 
+  summarise(mean = mean(reproduction_rate) - R_knn_lv, 
+            sd = sd(reproduction_rate))
+
+# DNN
+sens_dnn <- reproduction_sensitivity(opt_dnn_net_igraph)
+# compute average difference and standard deviation
+dnn_overview <- sens_dnn %>% 
+  group_by(deletions) %>% 
+  summarise(mean = mean(reproduction_rate) - R_dnn_lv, 
+            sd = sd(reproduction_rate))
+
+# order according to density of network 
+deletion_overview <- rbind(knn_overview, 
+                           dnn_overview,
+                           queen_overview, 
+                           eco_hubs_overview, 
+                           train_overview,
+                           delaunay_overview, 
+                           gabriel_overview, 
+                           relative_overview, 
+                           soi_overview, 
+                           complete_overview)
+
+deletion_overview$name <- c(rep("KNN", 5),
+                            rep("DNN", 5), 
+                            rep("Queen", 5), 
+                            rep("Eco. hub", 5), 
+                            rep("Railway-based", 5),  
+                            rep("Delaunay", 5), 
+                            rep("Gabriel", 5),
+                            rep("Relative", 5),
+                            rep("SOI", 5),
+                            rep("Complete", 5)
+)
+
+# for latex 
+strCaption <- "Overview over change in reproduction number $R_0$ for random edge
+deletions, difference between mean $R_0$ and $R_0$ for initial network, 
+standard deviation (sd) of new $R_0$,
+random deletion of 1-5 edges repeated 100 times"
+print(xtable(deletion_overview[, c(4, 1, 2, 3)],
+             digits=2,
+             caption=strCaption,
+             label="tab:rep_number_change_overview", 
+             align = c("", "l", "|", "r", "r", "r")),
+      include.rownames=FALSE, 
+      include.colnames=FALSE, 
+      caption.placement="bottom",
+      hline.after=NULL,
+      add.to.row = list(pos = list(-1,
+                                   nrow(deletion_overview)),
+                        command = c(paste("\\toprule \n",
+                                          " Network & \\# of deleted edges & 
+                                          mean difference & sd \\\\\n",
+                                          "\\midrule \n"),
+                                    "\\bottomrule \n")
+      )
+)
+
+# visualise sensitivity in a plot
+ggplot(deletion_overview, aes(x = deletions, 
+                              y = mean, 
+                              color = name, 
+                              group = name)) +
+  geom_point() +
+  geom_line(linetype = "dashed") +
+  xlab("Deletion") +
+  ylab(TeX("$\\Delta R_0$")) +
+  guides(color = guide_legend(title = "Network"),
+         shape = guide_legend(title = "Network"))  +
+  theme(legend.position = "bottom")
+ggsave("plots/reproductionNumber/sensitivity_absolute.pdf", 
+       width = 23, height = 14, unit = "cm")
+
+
+# Sensitivity of reproduction number - percentage -------------------------
+# based on percentages, delete proportional to all edges
+# repetition for 100 times 
+
+# Queen 
+sens_percent_queen <- reproduction_sensitivity_percentage(covid_net_queen_igraph)
+# compute average difference and standard deviation
+queen_percent_overview <- sens_percent_queen %>% 
+  group_by(deletions) %>% 
+  summarise(mean = mean(reproduction_rate) - R_queen_lv, 
+            sd = sd(reproduction_rate))
+
+# Eco hub
+sens_percent_eco_hubs <- reproduction_sensitivity_percentage(covid_net_eco_hubs_igraph, 
+                                                             numeric_vertices = TRUE, 
+                                                             county_index = county_index_eco_hubs)
+# compute average difference and standard deviation
+eco_hubs_percent_overview <- sens_percent_eco_hubs %>% 
+  group_by(deletions) %>% 
+  summarise(mean = mean(reproduction_rate) - R_eco_hubs_lv, 
+            sd = sd(reproduction_rate))
+
+# Train 
+sens_percent_train <- reproduction_sensitivity_percentage(covid_net_train_igraph, 
+                                                          numeric_vertices = TRUE, 
+                                                          county_index = county_index_train)
+# compute average difference and standard deviation
+train_percent_overview <- sens_percent_train %>% 
+  group_by(deletions) %>% 
+  summarise(mean = mean(reproduction_rate) - R_train_lv, 
+            sd = sd(reproduction_rate))
+
+# KNN
+sens_percent_knn <- reproduction_sensitivity_percentage(opt_knn_net_igraph)
+# compute average difference and standard deviation
+knn_percent_overview <- sens_percent_knn %>% 
+  group_by(deletions) %>% 
+  summarise(mean = mean(reproduction_rate) - R_knn_lv, 
+            sd = sd(reproduction_rate))
+
+# DNN
+sens_percent_dnn <- reproduction_sensitivity_percentage(opt_dnn_net_igraph)
+# compute average difference and standard deviation
+dnn_percent_overview <- sens_percent_dnn %>% 
+  group_by(deletions) %>% 
+  summarise(mean = mean(reproduction_rate) - R_dnn_lv, 
+            sd = sd(reproduction_rate))
+
+
+# Delaunay
+sens_percent_delaunay <- reproduction_sensitivity_percentage(covid_net_delaunay_igraph)
+# compute average difference and standard deviation
+delaunay_percent_overview <- sens_percent_delaunay %>% 
+  group_by(deletions) %>% 
+  summarise(mean = mean(reproduction_rate) - R_delaunay_lv, 
+            sd = sd(reproduction_rate))
+
+# Gabriel 
+sens_percent_gabriel <- reproduction_sensitivity_percentage(covid_net_gabriel_igraph)
+# compute average difference and standard deviation
+gabriel_percent_overview <- sens_percent_gabriel %>% 
+  group_by(deletions) %>% 
+  summarise(mean = mean(reproduction_rate) - R_gabriel_lv, 
+            sd = sd(reproduction_rate))
+
+
+# Relative 
+sens_percent_relative <- reproduction_sensitivity_percentage(covid_net_relative_igraph)
+# compute average difference and standard deviation
+relative_percent_overview <- sens_percent_relative %>% 
+  group_by(deletions) %>% 
+  summarise(mean = mean(reproduction_rate) - R_relative_lv, 
+            sd = sd(reproduction_rate))
+
+# SOI
+sens_percent_soi <- reproduction_sensitivity_percentage(covid_net_soi_igraph)
+# compute average difference and standard deviation
+soi_percent_overview <- sens_percent_soi %>% 
+  group_by(deletions) %>% 
+  summarise(mean = mean(reproduction_rate) - R_soi_lv, 
+            sd = sd(reproduction_rate))
+
+
+
+# order according to density of network 
+deletion_percent_overview <- rbind(knn_percent_overview, 
+                                   dnn_percent_overview,
+                                   queen_percent_overview, 
+                                   eco_hubs_percent_overview, 
+                                   train_percent_overview,
+                                   delaunay_percent_overview, 
+                                   gabriel_percent_overview, 
+                                   relative_percent_overview, 
+                                   soi_percent_overview, 
+                                   complete_percent_overview)
+
+deletion_percent_overview$name <- c(rep("KNN", 4),
+                                    rep("DNN", 4), 
+                                    rep("Queen", 4), 
+                                    rep("Eco. hub", 4), 
+                                    rep("Rail-based", 4),  
+                                    rep("Delaunay", 4), 
+                                    rep("Gabriel", 4),
+                                    rep("Relative", 4),
+                                    rep("SOI", 4),
+                                    rep("Complete", 4)
+)
+
+strCaption <- "Overview over change in reproduction number $R_0$ for random 
+edge deletions, difference between mean $R_0$ and $R_0$ for initial network, 
+standard deviation (sd) of new $R_0$, random deletion of 1\\%, 10\\%, 20\\% 
+and 25\\% of edges in the network repeated 100 times"
+print(xtable(deletion_percent_overview[, c(4, 1, 2, 3)],
+             digits=2,
+             caption=strCaption,
+             label="tab:rep_number_change_percent_overview", 
+             align = c("", "l", "|", "r", "r", "r")),
+      include.rownames=FALSE, 
+      include.colnames=FALSE, 
+      caption.placement="bottom",
+      hline.after=NULL,
+      add.to.row = list(pos = list(-1,
+                                   nrow(deletion_percent_overview)),
+                        command = c(paste("\\toprule \n",
+                                          " Network & \\# of deleted edges & mean difference & sd \\\\\n",
+                                          "\\midrule \n"),
+                                    "\\bottomrule \n")
+      )
+)
+
+
+# visualise sensitivity in a plot
+ggplot(deletion_percent_overview, 
+       aes(x = deletions, 
+           y = mean, 
+           color = name, 
+           group = name)) +
+  geom_point() +
+  geom_line(linetype = "dashed") +
+  xlab("% deletions") +
+  ylab(TeX("$\\Delta R_0$")) +
+  guides(color = guide_legend(title = "Network"),
+         shape = guide_legend(title = "Network")) +
+  theme(legend.position = "bottom")
+ggsave("plots/reproductionNumber/sensitivity_percent.pdf", 
+       width = 23, height = 14, unit = "cm")
 
 
 # Weighting ---------------------------------------------------------------
@@ -2113,7 +2631,7 @@ print(xtable(knn_best_res[, c(4, 1, 2, 3)],
              digits=2,
              caption=strCaption,
              label="tab:performance_knn", 
-             align = c("", "l", "|", "r", "r", "r")),
+             align = c("", "l", "|", "r", "c", "r")),
       include.rownames=FALSE, 
       include.colnames=FALSE, 
       caption.placement="bottom",
@@ -2121,7 +2639,7 @@ print(xtable(knn_best_res[, c(4, 1, 2, 3)],
       add.to.row = list(pos = list(-1,
                                    nrow(knn_best_res[, c(4, 1, 2, 3)])),
                         command = c(paste("\\toprule \n",
-                                          "Weighting & size k & best model & 
+                                          "Weighting & size k & \\code{GNAR} model & 
                                           BIC \\\\\n",
                                           "\\midrule \n"),
                                     "\\bottomrule \n")
@@ -2282,7 +2800,7 @@ print(xtable(dnn_best_res[, c(4, 1, 2, 3)],
              digits=2,
              caption=strCaption,
              label="tab:performance_dnn", 
-             align = c("", "l", "|", "r", "r", "r")),
+             align = c("", "l", "|", "r", "c", "r")),
       include.rownames=FALSE, 
       include.colnames=FALSE, 
       caption.placement="bottom",
@@ -2291,7 +2809,7 @@ print(xtable(dnn_best_res[, c(4, 1, 2, 3)],
                                    nrow(dnn_best_res[, c(4, 1, 2, 3)])),
                         command = c(paste("\\toprule \n",
                                           "Weighting scheme & distance d (in km) & 
-                                          best model & BIC \\\\\n",
+                                          \\code{GNAR} model & BIC \\\\\n",
                                           "\\midrule \n"),
                                     "\\bottomrule \n")
       )
@@ -2375,16 +2893,16 @@ print(xtable(bic_development,
 )
 
 
-# Compare performance -----------------------------------------------------
 
-compare_df <- data.frame("network" = c(rep("Queen", 6),
-                                       rep("Eco. hub", 6), 
-                                       rep("Rail", 6), 
-                                       rep("Delaunay", 6),
+# Performance overview ----------------------------------------------------
+compare_df <- data.frame("network" = c(rep("Delaunay", 6),
                                        rep("Gabriel", 6),
+                                       rep("SOI", 6),
                                        rep("Relative", 6), 
-                                       rep("SOI", 6), 
-                                       rep("Complete", 6)
+                                       rep("Complete", 6), 
+                                       rep("Queen", 6),
+                                       rep("Eco. hub", 6), 
+                                       rep("Rail", 6)
                                        ), 
                          "hyperparameters" = rep(c("INV-D", 
                                                    "INV-D+class", 
@@ -2393,7 +2911,43 @@ compare_df <- data.frame("network" = c(rep("Queen", 6),
                                                    "SPL", 
                                                    "SPL+class"), 
                                                  8), 
-                         "model" = c(return_best_model(results_queen)$name, 
+                         "model" = c(
+                                     return_best_model(results_delaunay)$name, 
+                                     return_best_model(results_class_delaunay)$name, 
+                                     return_best_model(results_pop_weighted_delaunay)$name,
+                                     return_best_model(results_pop_weighted_class_delaunay)$name,
+                                     return_best_model(results_old_delaunay)$name,
+                                     return_best_model(results_old_class_delaunay)$name,
+                                     
+                                     return_best_model(results_gabriel)$name, 
+                                     return_best_model(results_class_gabriel)$name, 
+                                     return_best_model(results_pop_weighted_gabriel)$name,
+                                     return_best_model(results_pop_weighted_class_gabriel)$name,
+                                     return_best_model(results_old_gabriel)$name,
+                                     return_best_model(results_old_class_gabriel)$name,
+                                     
+                                     return_best_model(results_soi)$name, 
+                                     return_best_model(results_class_soi)$name, 
+                                     return_best_model(results_pop_weighted_soi)$name,
+                                     return_best_model(results_pop_weighted_class_soi)$name, 
+                                     return_best_model(results_old_soi)$name,
+                                     return_best_model(results_old_class_soi)$name,
+                                     
+                                     return_best_model(results_relative)$name, 
+                                     return_best_model(results_class_relative)$name, 
+                                     return_best_model(results_pop_weighted_relative)$name,
+                                     return_best_model(results_pop_weighted_class_relative)$name,
+                                     return_best_model(results_old_relative)$name,
+                                     return_best_model(results_old_class_relative)$name,
+                                     
+                                     return_best_model(results_complete)$name, 
+                                     return_best_model(results_class_complete)$name, 
+                                     return_best_model(results_pop_weighted_complete)$name,
+                                     return_best_model(results_pop_weighted_class_complete)$name,
+                                     return_best_model(results_old_complete)$name, 
+                                     return_best_model(results_old_class_complete)$name, 
+                                     
+                                     return_best_model(results_queen)$name, 
                                      return_best_model(results_class_queen)$name, 
                                      return_best_model(results_pop_weighted_queen)$name,
                                      return_best_model(results_pop_weighted_class_queen)$name,
@@ -2412,44 +2966,45 @@ compare_df <- data.frame("network" = c(rep("Queen", 6),
                                      return_best_model(results_pop_weighted_train)$name,
                                      return_best_model(results_pop_weighted_class_train)$name,
                                      return_best_model(results_old_train)$name,
-                                     return_best_model(results_old_class_train)$name,
-                                     
-                                     return_best_model(results_delaunay)$name, 
-                                     return_best_model(results_class_delaunay)$name, 
-                                     return_best_model(results_pop_weighted_delaunay)$name,
-                                     return_best_model(results_pop_weighted_class_delaunay)$name,
-                                     return_best_model(results_old_delaunay)$name,
-                                     return_best_model(results_old_class_delaunay)$name,
-                                     
-                                     return_best_model(results_gabriel)$name, 
-                                     return_best_model(results_class_gabriel)$name, 
-                                     return_best_model(results_pop_weighted_gabriel)$name,
-                                     return_best_model(results_pop_weighted_class_gabriel)$name,
-                                     return_best_model(results_old_gabriel)$name,
-                                     return_best_model(results_old_class_gabriel)$name,
-                                     
-                                     return_best_model(results_relative)$name, 
-                                     return_best_model(results_class_relative)$name, 
-                                     return_best_model(results_pop_weighted_relative)$name,
-                                     return_best_model(results_pop_weighted_class_relative)$name,
-                                     return_best_model(results_old_relative)$name,
-                                     return_best_model(results_old_class_relative)$name,
-                                     
-                                     return_best_model(results_soi)$name, 
-                                     return_best_model(results_class_soi)$name, 
-                                     return_best_model(results_pop_weighted_soi)$name,
-                                     return_best_model(results_pop_weighted_class_soi)$name, 
-                                     return_best_model(results_old_soi)$name,
-                                     return_best_model(results_old_class_soi)$name,
-                                     
-                                     return_best_model(results_complete)$name, 
-                                     return_best_model(results_class_complete)$name, 
-                                     return_best_model(results_pop_weighted_complete)$name,
-                                     return_best_model(results_pop_weighted_class_complete)$name,
-                                     return_best_model(results_old_complete)$name, 
-                                     return_best_model(results_old_class_complete)$name
+                                     return_best_model(results_old_class_train)$name
                                      ), 
-                         "BIC" = c(return_best_model(results_queen)$BIC, 
+                         "BIC" = c(
+                                   return_best_model(results_delaunay)$BIC, 
+                                   return_best_model(results_class_delaunay)$BIC, 
+                                   return_best_model(results_pop_weighted_delaunay)$BIC,
+                                   return_best_model(results_pop_weighted_class_delaunay)$BIC,
+                                   return_best_model(results_old_delaunay)$BIC,
+                                   return_best_model(results_old_class_delaunay)$BIC,
+                                   
+                                   return_best_model(results_gabriel)$BIC, 
+                                   return_best_model(results_class_gabriel)$BIC, 
+                                   return_best_model(results_pop_weighted_gabriel)$BIC,
+                                   return_best_model(results_pop_weighted_class_gabriel)$BIC,
+                                   return_best_model(results_old_gabriel)$BIC,
+                                   return_best_model(results_old_class_gabriel)$BIC,
+                                   
+                                   return_best_model(results_soi)$BIC, 
+                                   return_best_model(results_class_soi)$BIC, 
+                                   return_best_model(results_pop_weighted_soi)$BIC,
+                                   return_best_model(results_pop_weighted_class_soi)$BIC, 
+                                   return_best_model(results_old_soi)$BIC,
+                                   return_best_model(results_old_class_soi)$BIC,
+                                   
+                                   return_best_model(results_relative)$BIC, 
+                                   return_best_model(results_class_relative)$BIC, 
+                                   return_best_model(results_pop_weighted_relative)$BIC,
+                                   return_best_model(results_pop_weighted_class_relative)$BIC,
+                                   return_best_model(results_old_relative)$BIC,
+                                   return_best_model(results_old_class_relative)$BIC,
+                                   
+                                   return_best_model(results_complete)$BIC, 
+                                   return_best_model(results_class_complete)$BIC, 
+                                   return_best_model(results_pop_weighted_complete)$BIC,
+                                   return_best_model(results_pop_weighted_class_complete)$BIC, 
+                                   return_best_model(results_old_complete)$BIC, 
+                                   return_best_model(results_old_class_complete)$BIC,
+                                   
+                                   return_best_model(results_queen)$BIC, 
                                    return_best_model(results_class_queen)$BIC, 
                                    return_best_model(results_pop_weighted_queen)$BIC,
                                    return_best_model(results_pop_weighted_class_queen)$BIC,
@@ -2468,42 +3023,7 @@ compare_df <- data.frame("network" = c(rep("Queen", 6),
                                    return_best_model(results_pop_weighted_train)$BIC,
                                    return_best_model(results_pop_weighted_class_train)$BIC,
                                    return_best_model(results_old_train)$BIC,
-                                   return_best_model(results_old_class_train)$BIC,
-                                   
-                                   return_best_model(results_delaunay)$BIC, 
-                                   return_best_model(results_class_delaunay)$BIC, 
-                                   return_best_model(results_pop_weighted_delaunay)$BIC,
-                                   return_best_model(results_pop_weighted_class_delaunay)$BIC,
-                                   return_best_model(results_old_delaunay)$BIC,
-                                   return_best_model(results_old_class_delaunay)$BIC,
-                                   
-                                   return_best_model(results_gabriel)$BIC, 
-                                   return_best_model(results_class_gabriel)$BIC, 
-                                   return_best_model(results_pop_weighted_gabriel)$BIC,
-                                   return_best_model(results_pop_weighted_class_gabriel)$BIC,
-                                   return_best_model(results_old_gabriel)$BIC,
-                                   return_best_model(results_old_class_gabriel)$BIC,
-                                   
-                                   return_best_model(results_relative)$BIC, 
-                                   return_best_model(results_class_relative)$BIC, 
-                                   return_best_model(results_pop_weighted_relative)$BIC,
-                                   return_best_model(results_pop_weighted_class_relative)$BIC,
-                                   return_best_model(results_old_relative)$BIC,
-                                   return_best_model(results_old_class_relative)$BIC,
-                                   
-                                   return_best_model(results_soi)$BIC, 
-                                   return_best_model(results_class_soi)$BIC, 
-                                   return_best_model(results_pop_weighted_soi)$BIC,
-                                   return_best_model(results_pop_weighted_class_soi)$BIC, 
-                                   return_best_model(results_old_soi)$BIC,
-                                   return_best_model(results_old_class_soi)$BIC,
-                                   
-                                   return_best_model(results_complete)$BIC, 
-                                   return_best_model(results_class_complete)$BIC, 
-                                   return_best_model(results_pop_weighted_complete)$BIC,
-                                   return_best_model(results_pop_weighted_class_complete)$BIC, 
-                                   return_best_model(results_old_complete)$BIC, 
-                                   return_best_model(results_old_class_complete)$BIC
+                                   return_best_model(results_old_class_train)$BIC
                          ))
 
 # for latex 
@@ -2515,7 +3035,7 @@ print(xtable(compare_df,
              digits=2,
              caption=strCaption,
              label="tab:overview_weighting_best_model", 
-             align = c("", "l", "|", "r", "r", "r")),
+             align = c("", "l", "|", "r", "c", "r")),
       include.rownames=FALSE, 
       include.colnames=FALSE, 
       caption.placement="bottom",
@@ -2523,7 +3043,7 @@ print(xtable(compare_df,
       add.to.row = list(pos = list(-1,
                                    nrow(compare_df)),
                         command = c(paste("\\toprule \n",
-                                          " Network & hyperparameter & model & BIC \\\\\n",
+                                          " Network & hyperparameter & \\code{GNAR} model & BIC \\\\\n",
                                           "\\midrule \n"),
                                     "\\bottomrule \n")
       )
@@ -2559,7 +3079,7 @@ print(xtable(compare_knn_dnn,
              digits=2,
              caption=strCaption,
              label="tab:overview_best_model_knn_dnn", 
-             align = c("", "l", "|", "r", "r", "r", "r")),
+             align = c("", "l", "|", "r", "r", "c", "r")),
       include.rownames=FALSE, 
       include.colnames=FALSE, 
       caption.placement="bottom",
@@ -2568,7 +3088,7 @@ print(xtable(compare_knn_dnn,
                                    nrow(compare_knn_dnn)),
                         command = c(paste("\\toprule \n",
                                           " Network & hyperparameter & k / d [km] & 
-                                          model & BIC \\\\\n",
+                                          \\code{GNAR} model & BIC \\\\\n",
                                           "\\midrule \n"),
                                     "\\bottomrule \n")
       )
@@ -2828,514 +3348,6 @@ ggplot(moran_dnn,
 ggsave("plots/spatialCor/covid_moran_dnn.pdf", 
        width = 27, height = 14, unit = "cm")
 
-# Scale-free --------------------------------------------------------------
-# analyse log-log behaviour and regression R squared
-queen_scale_free <- is_scale_free(covid_net_queen_igraph, 
-                                  network_name = "queen")
-queen_scale_free$graph
-queen_scale_free$R_squared
-
-eco_hub_scale_free <- is_scale_free(covid_net_eco_hubs_igraph, 
-                                    network_name = "eco_hubs")
-eco_hub_scale_free$graph
-eco_hub_scale_free$R_squared
-
-train_scale_free <- is_scale_free(covid_net_train_igraph, 
-                                  network_name = "train")
-train_scale_free$graph
-train_scale_free$R_squared
-
-knn_scale_free <- is_scale_free(opt_knn_net_igraph,
-                                network_name = "knn")
-knn_scale_free$graph
-knn_scale_free$R_squared
-
-dnn_scale_free <- is_scale_free(opt_dnn_net_igraph, 
-                                network_name = "dnn")
-dnn_scale_free$graph
-dnn_scale_free$R_squared
-
-delaunay_scale_free <- is_scale_free(covid_net_delaunay_igraph, 
-                                     network_name = "delaunay")
-delaunay_scale_free$graph
-delaunay_scale_free$R_squared
-
-gabriel_scale_free <- is_scale_free(covid_net_gabriel_igraph, 
-                                    network_name = "gabriel")
-gabriel_scale_free$graph
-gabriel_scale_free$R_squared
-
-relative_scale_free <- is_scale_free(covid_net_relative_igraph, 
-                                     network_name = "relative")
-relative_scale_free$graph
-relative_scale_free$R_squared
-
-soi_scale_free <- is_scale_free(igraph_net = covid_net_soi_igraph, 
-                                network_name = "soi")
-soi_scale_free$graph
-soi_scale_free$R_squared
-
-# for latex
-scale_free_overview <- data.frame("name" = c("Direct neighbourhood (Queen's)", 
-                                             "Economic hub + direct neighbourhood", 
-                                             "Rail-based", 
-                                             "KNN", 
-                                             "DNN", 
-                                             "Delaunay triangulation", 
-                                             "Gabriel", 
-                                             "Relative neighbourhood", 
-                                             "SOI"), 
-                                  "R_squared" = c(queen_scale_free$R_squared, 
-                                                  eco_hub_scale_free$R_squared, 
-                                                  train_scale_free$R_squared, 
-                                                  knn_scale_free$R_squared,
-                                                  dnn_scale_free$R_squared, 
-                                                  delaunay_scale_free$R_squared, 
-                                                  gabriel_scale_free$R_squared,
-                                                  relative_scale_free$R_squared, 
-                                                  soi_scale_free$R_squared))
-
-strCaption <- "Test for scale-free property for each constructed network, 
-$R^2$ for regression of log empirical cumulative distribution on log transformed 
-degree"
-print(xtable(scale_free_overview,
-             digits=2,
-             caption=strCaption,
-             label="tab:scale_free", 
-             align = c("", "l", "|", "c")),
-      include.rownames=FALSE, 
-      include.colnames=FALSE, 
-      caption.placement="bottom",
-      hline.after=NULL,
-      add.to.row = list(pos = list(-1,
-                                   nrow(scale_free_overview)),
-                        command = c(paste("\\toprule \n",
-                                          "Network & $R^2$ \\\\\n",
-                                          "\\midrule \n"),
-                                    "\\bottomrule \n")
-      )
-)
-
-# Reproduction rate -------------------------------------------------------
-
-# compute reproduction number according to Pastor-Satorras and Vespignani 2002 
-R_queen_psv <- reproduction_rate_psv(covid_net_queen_igraph)
-R_economic_hub_psv <- reproduction_rate_psv(covid_net_eco_hubs_igraph)
-R_train_psv <- reproduction_rate_psv(covid_net_train_igraph)
-R_knn_psv <- reproduction_rate_psv(opt_knn_net_igraph)
-R_dnn_psv <- reproduction_rate_psv(opt_dnn_net_igraph)
-R_delaunay_psv <- reproduction_rate_psv(covid_net_delaunay_igraph)
-R_gabriel_psv <- reproduction_rate_psv(covid_net_gabriel_igraph)
-R_relative_psv <- reproduction_rate_psv(covid_net_relative_igraph)
-R_soi_psv <- reproduction_rate_psv(covid_net_soi_igraph)
-
-# create overview data frame 
-R_comparison_psv <- data.frame("name" = c("Queen's", 
-                                      "Economic hub", 
-                                      "Railway-based", 
-                                      "KNN", 
-                                      "DNN", 
-                                      "Delaunay triangulation", 
-                                      "Gabriel",
-                                      "Relative neighbourhood", 
-                                      "SOI"), 
-                           "r_value" = c(R_queen_psv,
-                                         R_economic_hub_psv, 
-                                         R_train_psv, 
-                                         R_knn_psv, 
-                                         R_dnn_psv, 
-                                         R_delaunay_psv, 
-                                         R_gabriel_psv, 
-                                         R_relative_psv,
-                                         R_soi_psv))
-
-# compute reproduction number according to Lloyd and Valeika 2007 
-R_queen_lv <- reproduction_rate_lv(covid_net_queen_igraph)
-R_eco_hubs_lv <- reproduction_rate_lv(igraph_object = covid_net_eco_hubs_igraph, 
-                                          numeric_vertices = TRUE, 
-                                          county_index = county_index_eco_hubs)
-R_train_lv <- reproduction_rate_lv(igraph_object = covid_net_train_igraph, 
-                                   numeric_vertices = TRUE,
-                                   county_index = county_index_train)
-R_knn_lv <- reproduction_rate_lv(opt_knn_net_igraph)
-R_dnn_lv <- reproduction_rate_lv(opt_dnn_net_igraph)
-R_delaunay_lv <- reproduction_rate_lv(covid_net_delaunay_igraph)
-R_gabriel_lv <- reproduction_rate_lv(covid_net_gabriel_igraph)
-R_relative_lv <- reproduction_rate_lv(covid_net_relative_igraph)
-R_soi_lv <- reproduction_rate_lv(covid_net_soi_igraph)
-
-# create overview data frame 
-R_comparison_lv <- data.frame("name" = c("Queen's", 
-                                         "Economic hub", 
-                                         "Railway-based", 
-                                         "KNN", 
-                                         "DNN", 
-                                         "Delaunay triangulation", 
-                                         "Gabriel",
-                                         "Relative neighbourhood", 
-                                         "SOI", 
-                                         "Complete"), 
-                               "r_value" = c(R_queen_lv,
-                                             R_eco_hubs_lv, 
-                                             R_train_lv,  
-                                             R_delaunay_lv, 
-                                             R_gabriel_lv, 
-                                             R_relative_lv,
-                                             R_soi_lv, 
-                                             R_knn_lv, 
-                                             R_dnn_lv,
-                                             R_complete_lv))
-
-# for latex
-strCaption <- "Computation of basic reproduction number according to
-\\cite{lloyd2007network} for all COVID-19 networks"
-print(xtable(R_comparison_lv,
-             digits=2,
-             caption=strCaption,
-             label="tab:rep_number_adapted", 
-             align = c("", "l", "|", "c")),
-      include.rownames=FALSE, 
-      include.colnames=FALSE, 
-      caption.placement="bottom",
-      hline.after=NULL,
-      add.to.row = list(pos = list(-1,
-                                   nrow(R_comparison_lv)),
-                        command = c(paste("\\toprule \n",
-                                          "Network & $R_0$ \\\\\n",
-                                          "\\midrule \n"),
-                                    "\\bottomrule \n")
-      )
-)
-
-
-# compute reproduction number according to Pastor-Satorras and Vespignani 2002 
-R_queen_t <- reproduction_rate_t(covid_net_queen_igraph)
-R_economic_hub_t <- reproduction_rate_t(igraph_object = covid_net_eco_hubs_igraph)
-R_train_t <- reproduction_rate_t(covid_net_train_igraph)
-R_knn_t <- reproduction_rate_t(opt_knn_net_igraph)
-R_dnn_t <- reproduction_rate_t(opt_dnn_net_igraph)
-R_delaunay_t <- reproduction_rate_t(covid_net_delaunay_igraph)
-R_gabriel_t <- reproduction_rate_t(covid_net_gabriel_igraph)
-R_relative_t <- reproduction_rate_t(covid_net_relative_igraph)
-R_soi_t <- reproduction_rate_t(covid_net_soi_igraph)
-
-# create overview data frame 
-R_comparison_t <- data.frame("name" = c("Queen's", 
-                                        "Economic hub", 
-                                        "Railway-based", 
-                                        "KNN", 
-                                        "DNN", 
-                                        "Delaunay triangulation", 
-                                        "Gabriel",
-                                        "Relative neighbourhood", 
-                                        "SOI"), 
-                              "r_value" = c(R_queen_t,
-                                            R_economic_hub_t, 
-                                            R_train_t, 
-                                            R_knn_t, 
-                                            R_dnn_t, 
-                                            R_delaunay_t, 
-                                            R_gabriel_t, 
-                                            R_relative_t,
-                                            R_soi_t))
-
-
-
-
-# Sensitivity of reproduction number --------------------------------------
-# randomly delete 1-5 edges and observe how the reproduction number changes 
-# repetition for 100 times 
-
-# Queen 
-sens_queen <- reproduction_sensitivity(covid_net_queen_igraph)
-# compute average difference and standard deviation
-queen_overview <- sens_queen %>% 
-  group_by(deletions) %>% 
-  summarise(mean = mean(reproduction_rate) - R_queen_lv, 
-            sd = sd(reproduction_rate))
-
-# Eco hubs 
-sens_eco_hubs <- reproduction_sensitivity(covid_net_eco_hubs_igraph, 
-                                          numeric_vertices = TRUE, 
-                                          county_index = county_index_eco_hubs)
-# compute average difference and standard deviation
-eco_hubs_overview <- sens_eco_hubs %>% 
-  group_by(deletions) %>% 
-  summarise(mean = mean(reproduction_rate) - R_eco_hubs_lv, 
-            sd = sd(reproduction_rate))
-
-
-# Train
-sens_train <- reproduction_sensitivity(covid_net_train_igraph, 
-                                       numeric_vertices = TRUE, 
-                                       county_index = county_index_train)
-# compute average difference and standard deviation
-train_overview <- sens_train %>% 
-  group_by(deletions) %>% 
-  summarise(mean = mean(reproduction_rate) - R_train_lv, 
-            sd = sd(reproduction_rate))
-
-# Delaunay
-sens_delaunay <- reproduction_sensitivity(covid_net_delaunay_igraph)
-# compute average difference and standard deviation
-delaunay_overview <- sens_delaunay %>% 
-  group_by(deletions) %>% 
-  summarise(mean = mean(reproduction_rate) - R_delaunay_lv, 
-            sd = sd(reproduction_rate))
-
-# Gabriel 
-sens_gabriel <- reproduction_sensitivity(covid_net_gabriel_igraph)
-# compute average difference and standard deviation
-gabriel_overview <- sens_gabriel %>% 
-  group_by(deletions) %>% 
-  summarise(mean = mean(reproduction_rate) - R_gabriel_lv, 
-            sd = sd(reproduction_rate))
-
-# Relative
-sens_relative <- reproduction_sensitivity(covid_net_relative_igraph)
-# compute average difference and standard deviation
-relative_overview <- sens_relative %>% 
-  group_by(deletions) %>% 
-  summarise(mean = mean(reproduction_rate) - R_relative_lv, 
-            sd = sd(reproduction_rate))
-
-# SOI
-sens_soi <- reproduction_sensitivity(covid_net_soi_igraph)
-# compute average difference and standard deviation
-soi_overview <- sens_soi %>% 
-  group_by(deletions) %>% 
-  summarise(mean = mean(reproduction_rate) - R_soi_lv, 
-            sd = sd(reproduction_rate))
-
-
-# KNN
-sens_knn <- reproduction_sensitivity(opt_knn_net_igraph)
-# compute average difference and standard deviation
-knn_overview <- sens_knn %>% 
-  group_by(deletions) %>% 
-  summarise(mean = mean(reproduction_rate) - R_knn_lv, 
-            sd = sd(reproduction_rate))
-
-# DNN
-sens_dnn <- reproduction_sensitivity(opt_dnn_net_igraph)
-# compute average difference and standard deviation
-dnn_overview <- sens_dnn %>% 
-  group_by(deletions) %>% 
-  summarise(mean = mean(reproduction_rate) - R_dnn_lv, 
-            sd = sd(reproduction_rate))
-
-# order according to density of network 
-deletion_overview <- rbind(knn_overview, 
-                           dnn_overview,
-                           queen_overview, 
-                           eco_hubs_overview, 
-                           train_overview,
-                           delaunay_overview, 
-                           gabriel_overview, 
-                           relative_overview, 
-                           soi_overview, 
-                           complete_overview)
-
-deletion_overview$name <- c(rep("KNN", 5),
-                            rep("DNN", 5), 
-                            rep("Queen", 5), 
-                            rep("Eco. hub", 5), 
-                            rep("Railway-based", 5),  
-                            rep("Delaunay", 5), 
-                            rep("Gabriel", 5),
-                            rep("Relative", 5),
-                            rep("SOI", 5),
-                            rep("Complete", 5)
-)
-
-# for latex 
-strCaption <- "Overview over change in reproduction number $R_0$ for random edge
-deletions, difference between mean $R_0$ and $R_0$ for initial network, 
-standard deviation (sd) of new $R_0$,
-random deletion of 1-5 edges repeated 100 times"
-print(xtable(deletion_overview[, c(4, 1, 2, 3)],
-             digits=2,
-             caption=strCaption,
-             label="tab:rep_number_change_overview", 
-             align = c("", "l", "|", "r", "r", "r")),
-      include.rownames=FALSE, 
-      include.colnames=FALSE, 
-      caption.placement="bottom",
-      hline.after=NULL,
-      add.to.row = list(pos = list(-1,
-                                   nrow(deletion_overview)),
-                        command = c(paste("\\toprule \n",
-                                          " Network & \\# of deleted edges & 
-                                          mean difference & sd \\\\\n",
-                                          "\\midrule \n"),
-                                    "\\bottomrule \n")
-      )
-)
-
-# visualise sensitivity in a plot
-ggplot(deletion_overview, aes(x = deletions, 
-                              y = mean, 
-                              color = name, 
-                              group = name)) +
-  geom_point() +
-  geom_line(linetype = "dashed") +
-  xlab("Deletion") +
-  ylab(TeX("$\\Delta R_0$")) +
-  guides(color = guide_legend(title = "Network"),
-         shape = guide_legend(title = "Network"))  +
-  theme(legend.position = "bottom")
-ggsave("plots/reproductionNumber/sensitivity_absolute.pdf", 
-       width = 23, height = 14, unit = "cm")
-
-
-# Sensitivity of reproduction number - percentage -------------------------
-# based on percentages, delete proportional to all edges
-# repetition for 100 times 
-
-# Queen 
-sens_percent_queen <- reproduction_sensitivity_percentage(covid_net_queen_igraph)
-# compute average difference and standard deviation
-queen_percent_overview <- sens_percent_queen %>% 
-  group_by(deletions) %>% 
-  summarise(mean = mean(reproduction_rate) - R_queen_lv, 
-            sd = sd(reproduction_rate))
-
-# Eco hub
-sens_percent_eco_hubs <- reproduction_sensitivity_percentage(covid_net_eco_hubs_igraph, 
-                                                             numeric_vertices = TRUE, 
-                                                             county_index = county_index_eco_hubs)
-# compute average difference and standard deviation
-eco_hubs_percent_overview <- sens_percent_eco_hubs %>% 
-  group_by(deletions) %>% 
-  summarise(mean = mean(reproduction_rate) - R_eco_hubs_lv, 
-            sd = sd(reproduction_rate))
-
-# Train 
-sens_percent_train <- reproduction_sensitivity_percentage(covid_net_train_igraph, 
-                                                          numeric_vertices = TRUE, 
-                                                          county_index = county_index_train)
-# compute average difference and standard deviation
-train_percent_overview <- sens_percent_train %>% 
-  group_by(deletions) %>% 
-  summarise(mean = mean(reproduction_rate) - R_train_lv, 
-            sd = sd(reproduction_rate))
-
-# KNN
-sens_percent_knn <- reproduction_sensitivity_percentage(opt_knn_net_igraph)
-# compute average difference and standard deviation
-knn_percent_overview <- sens_percent_knn %>% 
-  group_by(deletions) %>% 
-  summarise(mean = mean(reproduction_rate) - R_knn_lv, 
-            sd = sd(reproduction_rate))
-
-# DNN
-sens_percent_dnn <- reproduction_sensitivity_percentage(opt_dnn_net_igraph)
-# compute average difference and standard deviation
-dnn_percent_overview <- sens_percent_dnn %>% 
-  group_by(deletions) %>% 
-  summarise(mean = mean(reproduction_rate) - R_dnn_lv, 
-            sd = sd(reproduction_rate))
-
-
-# Delaunay
-sens_percent_delaunay <- reproduction_sensitivity_percentage(covid_net_delaunay_igraph)
-# compute average difference and standard deviation
-delaunay_percent_overview <- sens_percent_delaunay %>% 
-  group_by(deletions) %>% 
-  summarise(mean = mean(reproduction_rate) - R_delaunay_lv, 
-            sd = sd(reproduction_rate))
-
-# Gabriel 
-sens_percent_gabriel <- reproduction_sensitivity_percentage(covid_net_gabriel_igraph)
-# compute average difference and standard deviation
-gabriel_percent_overview <- sens_percent_gabriel %>% 
-  group_by(deletions) %>% 
-  summarise(mean = mean(reproduction_rate) - R_gabriel_lv, 
-            sd = sd(reproduction_rate))
-
-
-# Relative 
-sens_percent_relative <- reproduction_sensitivity_percentage(covid_net_relative_igraph)
-# compute average difference and standard deviation
-relative_percent_overview <- sens_percent_relative %>% 
-  group_by(deletions) %>% 
-  summarise(mean = mean(reproduction_rate) - R_relative_lv, 
-            sd = sd(reproduction_rate))
-
-# SOI
-sens_percent_soi <- reproduction_sensitivity_percentage(covid_net_soi_igraph)
-# compute average difference and standard deviation
-soi_percent_overview <- sens_percent_soi %>% 
-  group_by(deletions) %>% 
-  summarise(mean = mean(reproduction_rate) - R_soi_lv, 
-            sd = sd(reproduction_rate))
-
-
-
-# order according to density of network 
-deletion_percent_overview <- rbind(knn_percent_overview, 
-                                   dnn_percent_overview,
-                                   queen_percent_overview, 
-                                   eco_hubs_percent_overview, 
-                                   train_percent_overview,
-                                   delaunay_percent_overview, 
-                                   gabriel_percent_overview, 
-                                   relative_percent_overview, 
-                                   soi_percent_overview, 
-                                   complete_percent_overview)
-
-deletion_percent_overview$name <- c(rep("KNN", 4),
-                                    rep("DNN", 4), 
-                                    rep("Queen", 4), 
-                                    rep("Eco. hub", 4), 
-                                    rep("Rail-based", 4),  
-                                    rep("Delaunay", 4), 
-                                    rep("Gabriel", 4),
-                                    rep("Relative", 4),
-                                    rep("SOI", 4),
-                                    rep("Complete", 4)
-)
-
-strCaption <- "Overview over change in reproduction number $R_0$ for random 
-edge deletions, difference between mean $R_0$ and $R_0$ for initial network, 
-standard deviation (sd) of new $R_0$, random deletion of 1\\%, 10\\%, 20\\% 
-and 25\\% of edges in the network repeated 100 times"
-print(xtable(deletion_percent_overview[, c(4, 1, 2, 3)],
-             digits=2,
-             caption=strCaption,
-             label="tab:rep_number_change_percent_overview", 
-             align = c("", "l", "|", "r", "r", "r")),
-      include.rownames=FALSE, 
-      include.colnames=FALSE, 
-      caption.placement="bottom",
-      hline.after=NULL,
-      add.to.row = list(pos = list(-1,
-                                   nrow(deletion_percent_overview)),
-                        command = c(paste("\\toprule \n",
-                                          " Network & \\# of deleted edges & mean difference & sd \\\\\n",
-                                          "\\midrule \n"),
-                                    "\\bottomrule \n")
-      )
-)
-
-
-# visualise sensitivity in a plot
-ggplot(deletion_percent_overview, 
-       aes(x = deletions, 
-           y = mean, 
-           color = name, 
-           group = name)) +
-  geom_point() +
-  geom_line(linetype = "dashed") +
-  xlab("% deletions") +
-  ylab(TeX("$\\Delta R_0$")) +
-  guides(color = guide_legend(title = "Network"),
-         shape = guide_legend(title = "Network")) +
-  theme(legend.position = "bottom")
-ggsave("plots/reproductionNumber/sensitivity_percent.pdf", 
-       width = 23, height = 14, unit = "cm")
-
-
 # Best model for each network ---------------------------------------------
 # find best model for each sparse and Complete network 
 best_model <- compare_df %>% 
@@ -3548,11 +3560,11 @@ best_model_overview_all$AIC <- c(AIC(model_complete),
 strCaption <- "Overview over best performing \\code{GNARfit()} models for 
 each COVID-19 network, SPL weighting best performing for all networks 
 excluding the DNN network"
-print(xtable(best_model_overview_all,
+print(xtable(best_model_overview_all[c(2, 4, 8, 7, 1, 10, 9, 5, 3, 6), ],
              digits=2,
              caption=strCaption,
              label="tab:best_models", 
-             align = c("", "l", "|", "r", "r", "r", "r")),
+             align = c("", "l", "|", "r", "c", "r", "r")),
       include.rownames=FALSE, 
       include.colnames=FALSE, 
       caption.placement="bottom",
@@ -3561,7 +3573,7 @@ print(xtable(best_model_overview_all,
                                    nrow(best_model_overview_all)),
                         command = c(paste("\\toprule \n",
                                           " Network & weighing & 
-                                          \\code{GNARfit()} model & BIC & 
+                                          \\code{GNAR} model & BIC & 
                                           AIC \\\\\n",
                                           "\\midrule \n"),
                                     "\\bottomrule \n")
@@ -3842,27 +3854,28 @@ neighbourhood_size_complete <- optimise_beta(GNAR_object  = complete_net_gnar,
                                                         network_name = "complete")
 
 # create overview data frame with optimised beta order for each network 
-new_best_parameters <- data.frame(network = c("Queen",
-                                              "Eco. hub", 
-                                              "Rail", 
-                                              "Delaunay", 
+new_best_parameters <- data.frame(network = c("Delaunay", 
                                               "Gabriel", 
-                                              "Relative", 
                                               "SOI",
+                                              "Relative",
+                                              "Complete",
                                               "KNN", 
                                               "DNN", 
-                                              "Complete"
+                                              "Queen",
+                                              "Eco. hub", 
+                                              "Rail"
                                               ), 
-                                  param = c(neighbourhood_size_queen$best_beta, 
-                                            neighbourhood_size_eco_hubs$best_beta, 
-                                            neighbourhood_size_train$best_beta, 
-                                            neighbourhood_size_delaunay$best_beta,
+                                  param = c(neighbourhood_size_delaunay$best_beta,
                                             neighbourhood_size_gabriel$best_beta, 
-                                            neighbourhood_size_relative$best_beta, 
                                             neighbourhood_size_soi$best_beta, 
+                                            neighbourhood_size_relative$best_beta, 
+                                            neighbourhood_size_complete$best_beta, 
                                             neighbourhood_size_knn$best_beta, 
                                             neighbourhood_size_dnn$best_beta, 
-                                            neighbourhood_size_complete$best_beta
+                                            neighbourhood_size_queen$best_beta, 
+                                            neighbourhood_size_eco_hubs$best_beta, 
+                                            neighbourhood_size_train$best_beta 
+                                            
                                   ))
 
 # compare old vs. new model 
@@ -3879,7 +3892,7 @@ print(xtable(compare_parameters,
              digits=2,
              caption=strCaption,
              label="tab:best_adapted_models", 
-             align = c("", "l", "|", "r", "r")),
+             align = c("", "l", "|", "c", "r")),
       include.rownames=FALSE, 
       include.colnames=FALSE, 
       caption.placement="bottom",
@@ -3887,7 +3900,7 @@ print(xtable(compare_parameters,
       add.to.row = list(pos = list(-1,
                                    nrow(compare_parameters)),
                         command = c(paste("\\toprule \n",
-                                          " Network & model & $\\beta$ order \\\\\n",
+                                          " Network & \\code{GNAR} model & $\\beta$ order \\\\\n",
                                           "\\midrule \n"),
                                     "\\bottomrule \n")
       )
@@ -4130,7 +4143,7 @@ ggplot(density_vs_beta,
          shape = guide_legend(title = "")) +
   theme(legend.position = "bottom")
 ggsave("plots/modelfit/density_vs_sum_params.pdf", 
-       width = 27, height = 14, units = "cm")
+       width = 14, height = 14, units = "cm")
 
 
 # Save objects -----------------------------------------------------------

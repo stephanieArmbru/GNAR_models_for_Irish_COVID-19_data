@@ -462,7 +462,7 @@ best_subset_knn_dnn <- rbind(knn_best_df,
 # for latex 
 strCaption <- "Overview over the best performing model and optimal 
 neighbourhood size $k$ / distance threshold $d$ for the KNN and DNN network"
-print(xtable(best_subset_knn_dnn[, c(5, 4, 1, 2, 3)],
+print(xtable(best_subset_knn_dnn[, c(5, 1, 4, 2, 3)],
              digits=2,
              caption=strCaption,
              label="tab:best_model_knn_dnn_subsets", 
@@ -475,7 +475,7 @@ print(xtable(best_subset_knn_dnn[, c(5, 4, 1, 2, 3)],
                                    nrow(best_subset_knn_dnn[, c(5, 4, 1, 2, 3)])),
                         command = c(paste("\\toprule \n",
                                           "Network & data subset & k / d [in km] &
-                                          best model & BIC \\\\\n",
+                                          \\code{GNAR} model & BIC \\\\\n",
                                           "\\midrule \n"),
                                     "\\bottomrule \n")
       )
@@ -687,7 +687,7 @@ print(xtable(best_for_subset_all[, c(1, 4, 2, 3, 5)],
       add.to.row = list(pos = list(-1,
                                    nrow(best_for_subset_all[, c(1, 4, 2, 3, 5)])),
                         command = c(paste("\\toprule \n",
-                                          "Data subset & network & best model & 
+                                          "Data subset & network & \\code{GNAR} model & 
                                           BIC & AIC \\\\\n",
                                           "\\midrule \n"),
                                     "\\bottomrule \n")

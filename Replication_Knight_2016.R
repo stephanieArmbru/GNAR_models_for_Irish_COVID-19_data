@@ -364,7 +364,7 @@ mumps_graph_nb <- mumps_numeric_graph %>% igraph2nb()
 # GNARnet object
 mumps_gnar <- igraphtoGNAR(mumps_graph)
 
-## ---- Graph characteristics --------------------------------------------------
+## ---- Network characteristics ------------------------------------------------
 gorder(mumps_graph) # 47 vertices in graph 
 gsize(mumps_graph) # 111 edges 
 
