@@ -18,6 +18,7 @@ library(expp)
 
 # load vectors and GNAR objects 
 load(file = "data/RObjects/GNAR.RData")
+load(file = "data/RObjects/igraph.RData")
 load(file = "data/RObjects/population_weight.RData")
 load(file = "data/RObjects/distance_urbanisation.RData")
 load(file = "data/RObjects/county_index.RData")
@@ -590,16 +591,16 @@ char_dnn_300 <- network_characteristics(dnn_300_igraph,
 char_knn_9 <- network_characteristics(knn_9_igraph, 
                                       network_name = "knn_9")
 
-# Delaunay 
-char_delaunay <- network_characteristics(covid_net_delaunay_igraph, 
-                                         network_name = "delaunay")
+# Economic hub 
+char_eco_hubs <- network_characteristics(covid_net_eco_hubs_igraph, 
+                                         network_name = "eco_hub")
 
 # compare network characteristics 
-cbind(char_dnn_175, 
-      char_dnn_225[, 2], 
-      char_dnn_300[, 2], 
+cbind(char_dnn_300[, 2], 
+      char_dnn_175, 
       char_knn_9[, 2], 
-      char_delaunay[, 2])
+      char_dnn_225[, 2], 
+      char_eco_hubs[, 2])
 
 
 
@@ -1207,3 +1208,4 @@ ggsave("plots/Prediction/mase_knn_etc_subset_4.pdf",
 # Save data subsets -------------------------------------------------------
 save(datasets_list,
      file = "data/RObjects/data_subsets_regulations.RData")
+

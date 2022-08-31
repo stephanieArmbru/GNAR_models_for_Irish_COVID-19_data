@@ -22,7 +22,7 @@ library(latex2exp) # for latex in axis labels
 
 
 # Load Data ---------------------------------------------------------------
-COVID_data_orig <- read_csv("data/COVID-19_HPSC_full_week.csv", 
+COVID_data_orig <- read_csv("data/COVID/COVID-19_HPSC_full_week.csv", 
                             show_col_types = FALSE)
 
 
@@ -307,7 +307,7 @@ pdf("plots/stationarity/mult_decomposition_dublin.pdf")
 plot(COVID_dublin_ts_decomposed_mult)
 dev.off()
 
-# Other counties 
+# other counties 
 COVID_cork_ts_decomposed <- tsr_decomposition("Leitrim")
 plot(COVID_cork_ts_decomposed)
 
@@ -324,7 +324,7 @@ COVID_longford_ts_decomposed <- tsr_decomposition("Longford")
 plot(COVID_longford_ts_decomposed)
 
 
-# Manual trend estimation through Moving Average smoothing
+# manual trend estimation through Moving Average smoothing
 COVID_data_week_smooth <- COVID_data_week_smooth %>% 
   group_by(CountyName) %>% 
   mutate(trendCases = rollapply(weeklyCases,
@@ -337,7 +337,7 @@ COVID_data_week_smooth <- COVID_data_week_smooth %>%
 plot_trend("Dublin")
 
 
-## Manual season estimation through Averaging over quarters
+# manual season estimation through averaging over quarters
 COVID_data_week_smooth <- COVID_data_week_smooth %>%
   mutate(detrendCases = weeklyCases - trendCases,
          quarter = lubridate::quarter(yw)) %>%
@@ -357,7 +357,6 @@ plot_residuals("Dublin")
 
 # plot entire decomposition 
 plot_tsr("Dublin")
-
 
 
 # Transformation ----------------------------------------------------------
@@ -506,6 +505,15 @@ adf.test(COVID_county$weeklyCasesDiff, k = 0)
 # p-value significant 
 
 # Heatmap -----------------------------------------------------------------
+# save data frame with 1-lag COVID-19 ID and smoothed winter 21/22
+COVID_final <- COVID_data_week_smooth %>% 
+  dplyr::select("CountyName", 
+                "yw", 
+                "weeklyCasesSum", 
+                "weeklyCasesDiff", 
+                "PopulationCensus16") %>% 
+  rename(weeklyCases = weeklyCasesDiff)
+
 # plot heatmaps for 1-lag COVID-19 ID for years 2020, 2021 and 2022
 COVID_heatmap <- COVID_final %>% 
   mutate(year = year(yw), 
@@ -560,14 +568,6 @@ ggsave("plots/dataVisualisation/heatmap_2022.pdf",
 
 
 # Save pre-processed data -------------------------------------------------
-# save data frame with 1-lag COVID-19 ID and smoothed winter 21/22
-COVID_final <- COVID_data_week_smooth %>% 
-  dplyr::select("CountyName", 
-                "yw", 
-                "weeklyCasesSum", 
-                "weeklyCasesDiff", 
-                "PopulationCensus16") %>% 
-  rename(weeklyCases = weeklyCasesDiff)
 
 # check if all necessary columns include 
 COVID_final %>% colnames()

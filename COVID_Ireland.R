@@ -130,11 +130,11 @@ ireland$NAME_1[ireland$NAME_1 == "Laoighis"] <- "Laois"
 
 # save Spatial Polygon Data Frame as shapefile 
 # shapefile(x = ireland, 
-#           file = "data/ireland_shapefile.shp")
+#           file = "data/COVID/ireland_shapefile.shp")
 
 
 # read Ireland shapefile 
-ireland_shp <- st_read("data/ireland_shapefile.shp")
+ireland_shp <- st_read("data/COVID/ireland_shapefile.shp")
 
 # construct centroid for each county 
 coord <- ireland_shp %>%  
@@ -147,7 +147,7 @@ rownames(coord) <- ireland_shp$NAME_1
 
 
 # read data frame including county towns and their coordinates 
-county_towns <- read_delim("data/county_towns_ireland.csv", 
+county_towns <- read_delim("data/COVID/county_towns_ireland.csv", 
                            delim = ";", 
                            escape_double = FALSE, 
                            trim_ws = TRUE, 
@@ -328,10 +328,6 @@ ggsave("plots/dataVisualisation/covid_compare_across_time.pdf",
        unit = "cm")
 # counties with highest weekly cases change during the pandemic 
 # not one hub from which COVID-19 was spread identifiable 
-
-# find county for which first COVID-19 case was detected
-COVID_weekly_data %>% filter(yw == "2020-03-01") %>% pull(weeklyCases)
-
 
 # Network construction ----------------------------------------------------
 # 1. Queen's contiguity: connection to all neighbouring counties 
@@ -4159,6 +4155,19 @@ save(list = c("covid_net_queen_gnar",
               "opt_dnn_net_gnar",
               "complete_net_gnar"),
      file = "data/RObjects/GNAR.RData")
+
+# save igraph objects for every network
+save(list = c("covid_net_queen_igraph",
+              "covid_net_eco_hubs_igraph",
+              "covid_net_train_igraph",
+              "covid_net_delaunay_igraph",
+              "covid_net_gabriel_igraph",
+              "covid_net_relative_igraph",
+              "covid_net_soi_igraph",
+              "opt_knn_net_igraph",
+              "opt_dnn_net_igraph",
+              "complete_net_igraph"),
+     file = "data/RObjects/igraph.RData")
 
 # save county indices for every network
 save(list = c("county_index_queen",
