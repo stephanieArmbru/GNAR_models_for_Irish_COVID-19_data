@@ -1015,7 +1015,7 @@ print(xtable(graph_overview,
                                    nrow(graph_soi)),
                         command = c(paste("\\toprule \n",
                                           " Metric & Delaunay & Gabriel & 
-                                           SOI & Rel. neigh. & Complete & Queen & 
+                                           SOI & Rel. neigh. & Queen & 
                                            Eco. hub & Railway \\\\\n",
                                           "\\midrule \n"),
                                     "\\bottomrule \n")
