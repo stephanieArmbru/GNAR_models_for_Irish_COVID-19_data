@@ -16,3 +16,5 @@ The file Replication_Knight_2016.R replicates the results from Knight et al., 20
 The file COVID_Ireland_data_processing.R performs some initial data exploration, the data aggregation to a weekly level and the necessary smoothing for extreme peaks in COVID-19 incidence.
 The COVID-19 networks are constructed and the GNAR models are fit and analysed in the file COVID_Ireland.R.
 The file COVID_Ireland_regulations.R explores GNAR models fitted to the 5 data subsets which are constructed by splitting the original data set according to COVID-19 regulations.
+
+The file COVID-19_Ireland_simulations.R performs a simulation to further investigate the behaviour of GNAR models. 
